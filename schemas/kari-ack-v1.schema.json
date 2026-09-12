@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kari:ack:1.0.0",
+  "title": "Proposed durable ingestion acknowledgement",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "status": {
+      "enum": [
+        "accepted",
+        "duplicate"
+      ]
+    },
+    "stored_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    }
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "status",
+    "stored_at"
+  ],
+  "additionalProperties": false
+}
