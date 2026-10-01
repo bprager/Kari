@@ -1,0 +1,26 @@
+[Unit]
+Description=Kari optional fixed HOME weather worker
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/kari/config.local.yaml
+
+[Service]
+Type=simple
+User=kari
+Group=kari
+WorkingDirectory=/opt/kari
+ExecStart=/opt/kari/.venv/bin/python -m kari --config /etc/kari/config.local.yaml run-weather
+Restart=on-failure
+RestartSec=30
+StateDirectory=kari
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kari
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

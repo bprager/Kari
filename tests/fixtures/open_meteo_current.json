@@ -1,0 +1,14 @@
+{
+  "utc_offset_seconds": 0,
+  "timezone": "GMT",
+  "current_units": {
+    "time": "unixtime", "interval": "seconds", "temperature_2m": "°C",
+    "relative_humidity_2m": "%", "dew_point_2m": "°C",
+    "wind_speed_10m": "m/s", "shortwave_radiation": "W/m²"
+  },
+  "current": {
+    "time": 1790802000, "interval": 900, "temperature_2m": 23.4,
+    "relative_humidity_2m": 56, "dew_point_2m": 14.1,
+    "wind_speed_10m": 2.4, "shortwave_radiation": 352.5
+  }
+}

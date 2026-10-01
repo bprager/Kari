@@ -2,12 +2,17 @@
 
 Environmental collection for Napoleon, running independently on Odin.
 
-Planned adapters:
-- ThermoPro TP350S: passive BLE temperature, humidity, and RSSI.
-- Levoit Core 300S: read-only PM2.5 and purifier state through VeSync.
+Adapters:
+- Planned ThermoPro TP350S: passive BLE temperature, humidity, and RSSI.
+- Planned Levoit Core 300S: read-only PM2.5 and purifier state through VeSync.
 
-The repository currently defines requirements and a proposed ingestion contract. Collectors, deployment, notifications, and a live Napoleon receiver are not implemented by this change.
+The optional Open-Meteo fixed HOME weather slice is implemented with local history, revision-aware queries, health, and offline export. It is disabled by default and has not been deployed. BLE/VeSync collectors, notifications, and live receiver publishing remain unimplemented. Fjölsviðr (formerly Napoleon) owns downstream interpretation; existing environment-variable names are preserved.
 
+- [Fixed HOME weather ADR](docs/ADR-kari-local-weather-context.md)
+- [Weather design and implementation plan](docs/weather-design.md)
+- [Weather operations, activation gates, and pilot checklist](docs/weather-operations.md)
+- [Disabled configuration v2 example](examples/config-v2.yaml)
+- [Weather event schema 1.1.0](schemas/kari-event-v1.1.schema.json)
 - [PRD](PRD.md)
 - [Ingestion semantics and migration](docs/ingestion.md)
 - [Event JSON Schema](schemas/kari-event-v1.schema.json)
@@ -19,8 +24,10 @@ The repository currently defines requirements and a proposed ingestion contract.
 Use Python 3.11+ in a virtual environment:
 
 ```sh
-python -m pip install -r requirements-contract.txt
+python -m pip install -r requirements.txt
 python scripts/validate_contract.py examples/events.jsonl
+python scripts/validate_contract.py examples/weather-events.jsonl
+python -m kari --config examples/config-v2.yaml validate-config
 python -m unittest discover -s tests -v
 ```
 

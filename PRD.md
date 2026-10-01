@@ -528,3 +528,31 @@ When an outbox limit is reached, halt new outbox enrollment, continue local even
 ## 19. Revision notes
 
 Revision 2.0 expands the original BLE PRD supplied on 2026-09-12. It retains FR-1 through FR-7, battery validation safeguards, staged email/SMS alerts, SQLite, CLI, systemd, and the seven-day stability requirement. It generalizes the storage/wire model, adds FR-9 through FR-12, and resolves repository placement. Live hardware identifiers are externalized to local configuration. No original receiver wire schema or deployed database was available; this is the first proposed wire version, not a backward-compatible claim about Napoleon.
+
+
+## Fixed HOME weather implementation addendum — 2026-09-30
+
+The [fixed HOME ADR](docs/ADR-kari-local-weather-context.md) adds an optional
+Open-Meteo weather adapter. The repository now includes the minimal weather
+runtime: configuration v2 weather parsing, current-model normalization, SQLite
+WAL migrations and immutable sample revisions, isolated scheduling, local health,
+and offline JSONL export/query. See the [design](docs/weather-design.md) and
+[operations guide](docs/weather-operations.md) for exact commands and limits.
+
+The configuration block is `adapters.weather`; the complete disabled example is
+[config-v2.yaml](examples/config-v2.yaml). It requires no coordinates when
+disabled, uses a fixed HOME epoch rather than phone location, polls every 900
+seconds, and retains protected integration-pending history. Existing adapter
+blocks and stable device IDs are not migrated or changed by the weather parser.
+Weather history defaults to 730 days, distinct from unlimited BLE retention.
+
+Wire version 1.1.0 is a separate exact-version schema; it adds `weather_context`
+and the `open_meteo` adapter. Modeled valid time is never an observation timestamp.
+Identical polls create poll records only; corrections append immutable revisions.
+Coordinates remain local except the separately approved Open-Meteo request.
+
+This addendum does not claim deployed collectors, a seven-day pilot, existing
+production database migration, implemented BLE/VeSync collection, external
+notifications, or accepted receiver integration. All original BLE/VeSync
+requirements remain. Weather collection requires explicit location sharing and
+service-eligibility approval; live publishing remains unavailable.

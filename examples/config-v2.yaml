@@ -1,0 +1,34 @@
+version: 2
+collector:
+  id: odin-kari
+  database_path: /var/lib/kari/kari.sqlite3
+  buffer_groups_per_device: 100
+adapters:
+  weather:
+    enabled: false
+    provider: open_meteo
+    poll_interval_seconds: 900
+    location_id: location-01
+    location_epoch_id: home-epoch-01
+    device_id: weather-01
+    display_timezone: America/Los_Angeles
+    coordinates_file: /etc/kari/coordinates.local.json
+    eligible_use_confirmed: false
+    current_semantics_verified: false
+    request_timeout_seconds: 20
+    max_age_seconds: 3600
+    model_selection: best_match
+    history_retention_days: 730
+    poll_retention_days: 90
+    raw_response_retention_days: 0
+    plausibility:
+      temperature: [-90, 60]
+      relative_humidity: [0, 100]
+      dew_point: [-100, 60]
+      wind_speed: [0, 100]
+      shortwave_radiation: [0, 1500]
+export:
+  enabled: false
+  schema_version: 1.1.0
+  endpoint_env: KARI_NAPOLEON_ENDPOINT
+  token_env: KARI_NAPOLEON_TOKEN
