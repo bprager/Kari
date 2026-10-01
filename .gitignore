@@ -223,3 +223,6 @@ __marimo__/
 config.local.yaml
 coordinates.local.json
 *.weather.lock
+
+# Local browser verification artifacts
+.playwright-mcp/

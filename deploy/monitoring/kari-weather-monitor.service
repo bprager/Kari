@@ -1,0 +1,18 @@
+[Unit]
+Description=Export private Kari weather pilot monitoring statistics
+
+[Service]
+Type=oneshot
+User=kari
+Group=hermodr-metrics
+SupplementaryGroups=kari
+WorkingDirectory=/opt/kari-weather-pilot
+ExecStart=/opt/kari-weather-pilot/.venv/bin/python -m kari.monitor --report /var/lib/kari/weather-pilot/reports/latest.json --output /home/bernd/Projects/prager.ws/infra/odin/observability/textfile/kari-weather-pilot.prom
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/bernd/Projects/prager.ws/infra/odin/observability/textfile
+RestrictAddressFamilies=AF_UNIX
+UMask=0077

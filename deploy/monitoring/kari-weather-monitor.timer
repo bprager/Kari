@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Kari weather pilot monitor every minute
+
+[Timer]
+OnBootSec=30s
+OnCalendar=*-*-* *:*:45
+Persistent=true
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
