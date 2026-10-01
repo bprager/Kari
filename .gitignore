@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Protected weather configuration and history
+*.sqlite3*
+*.db*
+config.local.yaml
+coordinates.local.json
+*.weather.lock

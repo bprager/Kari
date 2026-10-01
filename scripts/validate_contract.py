@@ -59,6 +59,8 @@ def validator(filename):
 
 
 EVENT = validator("kari-event-v1.schema.json")
+EVENT_WEATHER = validator("kari-event-v1.1.schema.json")
+EVENT_VERSIONS = {"1.0.0": EVENT, "1.1.0": EVENT_WEATHER}
 ACK = validator("kari-ack-v1.schema.json")
 
 
@@ -68,7 +70,9 @@ def moment(value):
 
 def validate_event(event, battery_capabilities=None):
     finite(event)
-    EVENT.validate(event)
+    if not isinstance(event, dict) or event.get("schema_version") not in EVENT_VERSIONS:
+        raise ValueError("Unsupported exact event version")
+    EVENT_VERSIONS[event["schema_version"]].validate(event)
     observed = event["observed_at"]
     collected = moment(event["collected_at"])
     if moment(event["persisted_at"]) < collected:
@@ -93,6 +97,30 @@ def validate_event(event, battery_capabilities=None):
             raise ValueError("Battery capability must be explicitly verified")
         if adapter == "thermopro_ble" and event["timestamp_basis"] != "collector_receive":
             raise ValueError("BLE observations require reception time")
+    elif event["event_type"] == "weather_context":
+        data = event["data"]
+        valid = moment(data["valid_at"])
+        age = (collected - valid).total_seconds()
+        if age < 0:
+            raise ValueError("Modeled valid time follows collection")
+        expected = "current" if age <= event["max_age_seconds"] else "stale"
+        if data["valid_time_freshness"] != expected:
+            raise ValueError("Weather freshness contradicts valid time")
+        support = data["temporal_support"]
+        start, end = support["interval_start"], support["interval_end"]
+        if support["statistic"] == "instantaneous":
+            if start is not None or end is not None:
+                raise ValueError("Instantaneous values cannot have interval boundaries")
+        elif start is None or end is None or moment(end) != valid or (
+            moment(end) - moment(start)
+        ).total_seconds() != support["nominal_step_seconds"]:
+            raise ValueError("Invalid backward-looking mean interval")
+        if (data["revision"] == 1) != (data["supersedes_event_id"] is None):
+            raise ValueError("Revision must identify its predecessor")
+        if data["supersedes_event_id"] == event["event_id"]:
+            raise ValueError("Event cannot supersede itself")
+        if (data["quality"] == "suspect") != bool(data["quality_flags"]):
+            raise ValueError("Quality flags must explain suspect evidence")
     elif event["event_type"] == "health_event":
         data = event["data"]
         started = moment(data["started_at"])

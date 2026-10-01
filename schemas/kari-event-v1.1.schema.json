@@ -1,0 +1,1129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kari:event:1.1.0",
+  "title": "K\u00e1ri event 1.1.0 (proposed)",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "collection_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "enum": [
+        "observation",
+        "device_state",
+        "health_event",
+        "weather_context"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "component": {
+          "const": "kari"
+        },
+        "collector_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "adapter": {
+          "enum": [
+            "thermopro_ble",
+            "vesync",
+            "system",
+            "open_meteo"
+          ]
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "collector_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "component",
+        "collector_id",
+        "adapter",
+        "adapter_version",
+        "collector_version"
+      ],
+      "additionalProperties": false
+    },
+    "device_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "location_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "observed_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "collected_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "persisted_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "timestamp_basis": {
+      "enum": [
+        "device",
+        "collector_receive",
+        "unknown"
+      ]
+    },
+    "freshness_at_collection": {
+      "enum": [
+        "current",
+        "stale",
+        "unknown"
+      ]
+    },
+    "max_age_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    },
+    "data": {}
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "collection_id",
+    "event_type",
+    "source",
+    "device_id",
+    "location_id",
+    "observed_at",
+    "collected_at",
+    "persisted_at",
+    "timestamp_basis",
+    "freshness_at_collection",
+    "max_age_seconds",
+    "data"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "properties": {
+        "metric": {
+          "enum": [
+            "temperature",
+            "relative_humidity",
+            "rssi",
+            "pm2_5",
+            "battery"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "Cel",
+            "%",
+            "dBm",
+            "ug/m3"
+          ]
+        },
+        "quality": {
+          "enum": [
+            "valid",
+            "suspect"
+          ]
+        }
+      },
+      "required": [
+        "metric",
+        "value",
+        "unit",
+        "quality"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "temperature"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "Cel"
+              },
+              "value": {
+                "type": "number",
+                "minimum": -273.15
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "relative_humidity"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "%"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "rssi"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "dBm"
+              },
+              "value": {
+                "type": "number",
+                "minimum": -127,
+                "maximum": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "pm2_5"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "ug/m3"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "battery"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "%"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      ]
+    },
+    "device_state": {
+      "type": "object",
+      "properties": {
+        "power": {
+          "enum": [
+            "on",
+            "off"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "speed_setting": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "air_quality_category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "filter_life_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "filter_life_basis": {
+          "const": "estimated"
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "power"
+          ]
+        },
+        {
+          "required": [
+            "mode"
+          ]
+        },
+        {
+          "required": [
+            "speed_setting"
+          ]
+        },
+        {
+          "required": [
+            "air_quality_category"
+          ]
+        },
+        {
+          "required": [
+            "filter_life_percent"
+          ]
+        }
+      ],
+      "dependentRequired": {
+        "filter_life_percent": [
+          "filter_life_basis"
+        ],
+        "filter_life_basis": [
+          "filter_life_percent"
+        ]
+      }
+    },
+    "health_event": {
+      "type": "object",
+      "properties": {
+        "incident_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "scope": {
+          "enum": [
+            "device",
+            "adapter",
+            "collector",
+            "storage",
+            "notification",
+            "export"
+          ]
+        },
+        "condition_code": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "status": {
+          "enum": [
+            "starting",
+            "healthy",
+            "suspect",
+            "unavailable",
+            "critical",
+            "recovered",
+            "disabled"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "critical"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "incident_id",
+        "scope",
+        "condition_code",
+        "status",
+        "severity",
+        "started_at",
+        "resolved_at",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "recovered"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "resolved_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "resolved_at": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "critical"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "severity": {
+                "const": "critical"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "weather_context": {
+      "type": "object",
+      "properties": {
+        "data_kind": {
+          "const": "modeled_current"
+        },
+        "location_epoch_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+        },
+        "metric": {
+          "enum": [
+            "temperature",
+            "relative_humidity",
+            "dew_point",
+            "wind_speed",
+            "shortwave_radiation"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "Cel",
+            "%",
+            "m/s",
+            "W/m2"
+          ]
+        },
+        "quality": {
+          "enum": [
+            "valid",
+            "suspect"
+          ]
+        },
+        "quality_flags": {
+          "type": "array",
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "outside_plausible_range"
+            ]
+          }
+        },
+        "valid_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "valid_time_freshness": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        },
+        "temporal_support": {
+          "type": "object",
+          "properties": {
+            "statistic": {
+              "enum": [
+                "instantaneous",
+                "mean"
+              ]
+            },
+            "interval_start": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "interval_end": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "Z$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "nominal_step_seconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400
+            }
+          },
+          "required": [
+            "statistic",
+            "interval_start",
+            "interval_end",
+            "nominal_step_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "const": "open_meteo"
+            },
+            "product": {
+              "const": "forecast_current"
+            },
+            "model_selection": {
+              "const": "best_match"
+            },
+            "model_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "model_run_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "source_variable": {
+              "enum": [
+                "temperature_2m",
+                "relative_humidity_2m",
+                "dew_point_2m",
+                "wind_speed_10m",
+                "shortwave_radiation"
+              ]
+            },
+            "height_m": {
+              "enum": [
+                2,
+                10,
+                null
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "product",
+            "model_selection",
+            "model_id",
+            "model_run_id",
+            "source_variable",
+            "height_m"
+          ],
+          "additionalProperties": false
+        },
+        "sample_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supersedes_event_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "data_kind",
+        "location_epoch_id",
+        "metric",
+        "value",
+        "unit",
+        "quality",
+        "quality_flags",
+        "valid_at",
+        "valid_time_freshness",
+        "temporal_support",
+        "provenance",
+        "sample_id",
+        "revision",
+        "supersedes_event_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "temperature"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "Cel"
+              },
+              "value": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "provenance": {
+                "properties": {
+                  "source_variable": {
+                    "const": "temperature_2m"
+                  },
+                  "height_m": {
+                    "const": 2
+                  }
+                }
+              },
+              "temporal_support": {
+                "properties": {
+                  "statistic": {
+                    "const": "instantaneous"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "relative_humidity"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "%"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "provenance": {
+                "properties": {
+                  "source_variable": {
+                    "const": "relative_humidity_2m"
+                  },
+                  "height_m": {
+                    "const": 2
+                  }
+                }
+              },
+              "temporal_support": {
+                "properties": {
+                  "statistic": {
+                    "const": "instantaneous"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "dew_point"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "Cel"
+              },
+              "value": {
+                "type": "number",
+                "minimum": -273.15
+              },
+              "provenance": {
+                "properties": {
+                  "source_variable": {
+                    "const": "dew_point_2m"
+                  },
+                  "height_m": {
+                    "const": 2
+                  }
+                }
+              },
+              "temporal_support": {
+                "properties": {
+                  "statistic": {
+                    "const": "instantaneous"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "wind_speed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "m/s"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "provenance": {
+                "properties": {
+                  "source_variable": {
+                    "const": "wind_speed_10m"
+                  },
+                  "height_m": {
+                    "const": 10
+                  }
+                }
+              },
+              "temporal_support": {
+                "properties": {
+                  "statistic": {
+                    "const": "instantaneous"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "metric": {
+                "const": "shortwave_radiation"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unit": {
+                "const": "W/m2"
+              },
+              "value": {
+                "type": "number",
+                "minimum": 0
+              },
+              "provenance": {
+                "properties": {
+                  "source_variable": {
+                    "const": "shortwave_radiation"
+                  },
+                  "height_m": {
+                    "const": null
+                  }
+                }
+              },
+              "temporal_support": {
+                "properties": {
+                  "statistic": {
+                    "const": "mean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/observation"
+          },
+          "device_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "device_state"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/device_state"
+          },
+          "device_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "health_event"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/health_event"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "timestamp_basis": {
+            "const": "unknown"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "observed_at": {
+            "type": "null"
+          },
+          "freshness_at_collection": {
+            "const": "unknown"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "freshness_at_collection": {
+            "enum": [
+              "current",
+              "stale"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "adapter": {
+                "const": "vesync"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "timestamp_basis": {
+            "enum": [
+              "device",
+              "unknown"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "adapter": {
+                "const": "system"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "event_type": {
+            "const": "health_event"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "device_state"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "adapter": {
+                "const": "vesync"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "health_event"
+          },
+          "data": {
+            "properties": {
+              "scope": {
+                "const": "device"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "device_id": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "location_id": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "weather_context"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/weather_context"
+          },
+          "device_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "location_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+          },
+          "observed_at": {
+            "const": null
+          },
+          "timestamp_basis": {
+            "const": "unknown"
+          },
+          "freshness_at_collection": {
+            "const": "unknown"
+          },
+          "source": {
+            "properties": {
+              "adapter": {
+                "const": "open_meteo"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "adapter": {
+                "const": "open_meteo"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "event_type": {
+            "const": "weather_context"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -20,7 +20,7 @@ Every JSONL line is one complete UTF-8 JSON event, maximum 16 KiB encoded. Rejec
 
 | Field | Meaning |
 |---|---|
-| schema_version | Exact accepted version, initially 1.0.0 |
+| schema_version | Exact accepted version: 1.0.0 or separately negotiated 1.1.0 |
 | event_id | UUID minted once before durable storage; unchanged on every export/retry |
 | collection_id | UUID grouping metrics and state from one selected BLE reception or one cloud poll; health evaluations get their own collection ID |
 | event_type | observation, device_state, or health_event |
@@ -131,3 +131,37 @@ Later integration gates remain: actual model/capabilities, account authenticatio
 - [pyvesync](https://github.com/webdjoe/pyvesync)
 - [Home Assistant VeSync support and cloud polling](https://www.home-assistant.io/integrations/vesync/)
 - [Python jsonschema validation and format checking](https://python-jsonschema.readthedocs.io/en/stable/validate/)
+
+
+## 9. Fixed HOME weather extension, exact version 1.1.0
+
+The [separate 1.1 schema](../schemas/kari-event-v1.1.schema.json) and semantic
+validator add `weather_context` / `open_meteo`. The 1.0 schema and original
+fixtures are unchanged; 1.0 consumers reject weather. Existing observation/state
+semantics carry forward. Strict schema validation and semantic validation are both
+required; exact version dispatch never treats a minor version as automatically
+compatible. [Weather examples](../examples/weather-events.jsonl) are synthetic.
+
+Each weather event represents one modeled current metric. `observed_at` is null,
+`timestamp_basis` and envelope freshness are unknown. `data.valid_at` is the
+provider's represented UTC time; `valid_time_freshness` compares it to receipt time.
+Means have a positive backward-looking interval ending at valid time; instantaneous
+values have null boundaries. Metric/unit/variable/height pairs are strict. Only
+`outside_plausible_range` is an allowed quality flag in this release.
+
+Stable opaque location/epoch/device IDs identify the local stream. A random durable
+sample ID identifies the epoch/source/provider/product/profile/kind/metric/time/
+temporal-support tuple. Evidence changes append revisions and predecessor IDs;
+identical polls produce no event, including when computed freshness changes.
+Selection defaults to the greatest revision after any as-of collection cutoff.
+This sample-level rule is specific to modeled weather and does not replace the
+original event-ID transport deduplication rules.
+
+Local storage, bounded enrollment, matching acknowledgement checks, backup and
+protected retention now exist for the weather slice. No live HTTP publisher or
+receiver exists. The existing 1.0 acknowledgement artifact is used for offline
+outbox tests only and must be explicitly agreed with the receiver for 1.1 events.
+Export preserves all revisions and IDs and requires an exact accepted version.
+No endpoint, source authorization, retention agreement, or renamed Napoleon
+configuration is inferred. See [operations](weather-operations.md) for the
+activation gates, weather query projection, attribution and downstream recipe.
