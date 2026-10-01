@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+root='/Users/bernd/Library/Application Support/Kari'
+exec "$root/venv/bin/python" /usr/local/libexec/mimir-monitor-launcher.py monitor --config "$root/production/config.yaml" --environment-file "$root/production/identity.env" "$@"
