@@ -9,13 +9,13 @@
 | Status | Expanded implementation requirements; ingestion contract proposed, not deployed |
 | PRD revision | 2.0, 2026-09-12 |
 | Contract | `kari.event` 1.0.0, JSON Schema Draft 2020-12 |
-| Primary host | Odin, Ubuntu |
+| Host placement | Odin for non-Bluetooth services; Mimir for all Bluetooth/BLE services |
 | Initial sensor | TempPro/ThermoPro TP350, advertised as TP350S |
 | Additional source | Levoit Core 300S via VeSync; second purifier model to be confirmed |
 
 ## 1. Summary
 
-Kári is an independently deployable environmental collection service on Odin. Its first adapter passively receives TP350S BLE advertisements through the maintained Python [`Bluetooth-Devices/thermopro-ble`](https://github.com/Bluetooth-Devices/thermopro-ble) parser. A second, independently scheduled adapter reads Levoit purifier telemetry through `pyvesync` and the VeSync cloud. Both feed shared validation, local persistence, health monitoring, and a versioned export contract.
+Kári is an independently deployable environmental collection service. All Bluetooth/BLE services run on Mimir because of Odin's hardware constraints; weather and other non-Bluetooth services may run on Odin. The BLE adapter passively receives TP350S advertisements through the maintained Python [`Bluetooth-Devices/thermopro-ble`](https://github.com/Bluetooth-Devices/thermopro-ble) parser. A second, independently scheduled adapter reads Levoit purifier telemetry through `pyvesync` and the VeSync cloud. Both feed shared validation, local persistence, health monitoring, and a versioned export contract.
 
 This revision expands the original BLE PRD, preserving its sampling, battery safeguards, notifications, and operations requirements. The inspected GitHub main branch contained no collector code or previous ingestion schema. Requirements and examples here do not establish a running service or an accepted Napoleon endpoint. The original PRD remains the baseline for BLE behavior; concrete device identifiers and account details belong in local configuration.
 

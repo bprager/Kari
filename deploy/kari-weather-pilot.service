@@ -1,0 +1,24 @@
+[Unit]
+Description=Kari unattended seven-day weather pilot
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/kari-weather-pilot/config.yaml
+
+[Service]
+Type=simple
+User=kari
+Group=kari
+WorkingDirectory=/opt/kari-weather-pilot
+ExecStart=/opt/kari-weather-pilot/.venv/bin/python -m kari.pilot run --config /etc/kari-weather-pilot/config.yaml --state /var/lib/kari/weather-pilot/pilot.json --reports /var/lib/kari/weather-pilot/reports
+Restart=on-failure
+RestartSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kari/weather-pilot
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

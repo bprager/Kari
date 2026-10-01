@@ -2,6 +2,10 @@
 
 Environmental collection for Napoleon, running independently on Odin.
 
+Host policy: Bluetooth/BLE services run on **Mimir only**, never Odin. The weather
+pilot runs on Odin and uses no Bluetooth. See the [pilot design and deployment
+record](docs/weather-pilot-design.md).
+
 Adapters:
 - Planned ThermoPro TP350S: passive BLE temperature, humidity, and RSSI.
 - Planned Levoit Core 300S: read-only PM2.5 and purifier state through VeSync.

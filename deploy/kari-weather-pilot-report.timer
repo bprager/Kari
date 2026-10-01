@@ -1,0 +1,12 @@
+[Unit]
+Description=Kari pilot report every 15 minutes
+
+[Timer]
+OnBootSec=1min
+OnCalendar=*-*-* *:00/15:30 UTC
+Persistent=true
+AccuracySec=1s
+Unit=kari-weather-pilot-report.service
+
+[Install]
+WantedBy=timers.target
