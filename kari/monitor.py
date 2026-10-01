@@ -12,8 +12,10 @@ PHASES = {'awaiting_configuration': 0, 'running': 1, 'completed': 2}
 ASSESSMENTS = {'not_started': 0, 'in_progress': 1, 'passed': 2, 'needs_review': 3}
 
 
-def number(value):
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+VALUE_FIELDS = ("latest", "average_1h", "average_24h", "minimum_24h", "maximum_24h")
+
+def number(value, signed=False):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or (value < 0 and not signed):
         raise ValueError('Invalid monitoring value')
     return format(value, '.15g')
 
@@ -27,8 +29,8 @@ def timestamp(value):
 
 def render(report):
     lines = ['kari_weather_pilot_report_available 1']
-    def emit(name, value, labels=''):
-        lines.append(f'kari_weather_pilot_{name}{labels} {number(value)}')
+    def emit(name, value, labels='', signed=False):
+        lines.append(f'kari_weather_pilot_{name}{labels} {number(value, signed)}')
     emit('phase', PHASES[report['phase']])
     emit('assessment', ASSESSMENTS[report['acceptance']])
     emit('report_timestamp_seconds', timestamp(report['reported_at']))
@@ -47,6 +49,12 @@ def render(report):
             stats = report['metrics'][metric]
             for key in ('samples', 'stale', 'suspect', 'coverage_fraction'):
                 emit(key, stats[key], '{metric="' + metric + '"}')
+    for metric in METRICS:
+        readings = report.get('readings', {}).get(metric, {})
+        for key in (*VALUE_FIELDS, 'latest_valid_timestamp_seconds', 'count_24h'):
+            if key in readings:
+                emit('value_' + key, readings[key], '{metric="' + metric + '"}',
+                     signed=key in VALUE_FIELDS and metric in ('temperature', 'dew_point'))
     return '\n'.join(lines) + '\n'
 
 

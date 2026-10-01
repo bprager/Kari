@@ -147,3 +147,44 @@ class PilotTests(unittest.TestCase):
         report=self.pilot.report('2026-10-01T00:00:05Z')
         self.assertEqual(report['metrics']['temperature']['stale'],1)
         self.assertLessEqual(report['metrics']['temperature']['coverage_fraction'],900/10800)
+
+    def test_reading_summary_replaces_revisions_and_uses_valid_time(self):
+        from kari.reading_summary import summarize
+        from kari.store import seconds
+        database = self.populate()
+        cfg = WeatherConfig.from_mapping(CONFIG)
+        payload = copy.deepcopy(FIXTURE)
+        payload['current']['temperature_2m'] = -5
+        with Store(database) as store:
+            store.ingest(cfg, normalize(payload,cfg,NOW),NOW,str(uuid4()),persisted_at=NOW)
+            payload['current']['time'] += 900
+            payload['current']['temperature_2m'] = -1
+            at = '2026-09-30T21:15:05Z'
+            store.ingest(cfg,normalize(payload,cfg,at),at,str(uuid4()),persisted_at=at)
+            values = summarize(store, seconds(at),cfg.location_epoch_id)['temperature']
+        self.assertEqual(values['count_24h'],2)
+        self.assertEqual(values['latest'],-1)
+        self.assertEqual(values['average_1h'],-3)
+        self.assertEqual(values['average_24h'],-3)
+        self.assertEqual(values['minimum_24h'],-5)
+        self.assertEqual(values['maximum_24h'],-1)
+
+    def test_reading_summary_excludes_stale_suspect_and_expired_samples(self):
+        from kari.reading_summary import summarize
+        from kari.store import seconds
+        database = self.populate()
+        cfg = WeatherConfig.from_mapping(CONFIG)
+        with Store(database) as store:
+            payload = copy.deepcopy(FIXTURE)
+            payload['current']['time'] += 900
+            payload['current']['temperature_2m'] = 80
+            at='2026-09-30T21:15:05Z'
+            store.ingest(cfg,normalize(payload,cfg,at),at,str(uuid4()),persisted_at=at)
+            payload['current']['time'] += 900
+            payload['current']['temperature_2m'] = 25
+            at='2026-09-30T23:30:05Z'
+            store.ingest(cfg,normalize(payload,cfg,at),at,str(uuid4()),persisted_at=at)
+            stats=summarize(store,seconds(at),cfg.location_epoch_id)['temperature']
+            self.assertEqual(stats['count_24h'],1)
+            self.assertNotIn('average_1h',stats)
+            self.assertEqual(summarize(store,seconds('2026-10-02T23:30:05Z'),cfg.location_epoch_id),{})

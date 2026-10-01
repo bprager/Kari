@@ -48,3 +48,15 @@ class TerminalPilotTests(unittest.TestCase):
             self.assertEqual(cache.read(),({},True))
             self.assertEqual(cache.read(),({},True))
             self.assertEqual(pilot.fetch.call_count,2)
+
+    def test_negative_values_display_with_units_and_ranges(self):
+        values = self.metrics()
+        for key,value in [('latest',-2),('average_1h',-3),('average_24h',-4),('minimum_24h',-6),('maximum_24h',-1)]:
+            values['value_'+key,'temperature'] = value
+        text = '\n'.join(t for t,_ in pilot.render(values,now=1100))
+        self.assertIn('Temperature (°C)',text)
+        self.assertIn('-6.0–-1.0',text)
+        self.assertIn('AVG 1h',text)
+        self.assertIn('available history only',text)
+        data={'status':'success','data':{'result':[{'metric':{'__name__':'kari_weather_pilot_value_latest','metric':'temperature'},'value':[0,'-2']}]}}
+        self.assertEqual(pilot.parse(data)[('value_latest','temperature')],-2)

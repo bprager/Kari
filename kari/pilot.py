@@ -15,6 +15,7 @@ import threading
 import time
 
 from kari.config import load_config, load_coordinates
+from kari.reading_summary import summarize
 from kari.store import Store, canonical, seconds
 from kari.weather import VARIABLES, stamp, utcnow
 from kari.worker import Worker
@@ -260,7 +261,8 @@ class Pilot:
                 previous_end=max(previous_end,right)
             metrics[metric]['coverage_fraction']=min(1,covered/max(1,end-start))
         incidents = [loads(r[0])['data'] for r in c.execute("SELECT payload FROM events WHERE event_type='health_event' AND collected_at>=? AND collected_at<=? ORDER BY seq",(start,end))]
-        return dict(polls=polls,metrics=metrics,events=total,incidents=incidents)
+        return dict(polls=polls,metrics=metrics,events=total,incidents=incidents,
+                    readings=summarize(store, end, cfg.weather.location_epoch_id))
 
     def _write_reports(self, report):
         atomic_write(self.reports/'latest.json',canonical(report)+'\n')

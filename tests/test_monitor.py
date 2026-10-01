@@ -68,3 +68,15 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(module.update(copy.deepcopy(once)), once)
         ids = [p['id'] for p in once['panels']]
         self.assertEqual(len(ids), len(set(ids)))
+
+
+class ReadingExportTests(unittest.TestCase):
+    def test_negative_temperature_and_zero_solar_are_exported(self):
+        report = copy.deepcopy(REPORT)
+        report['readings'] = {'temperature':{'latest':-5,'average_24h':-3},
+                              'shortwave_radiation':{'latest':0},
+                              'private':{'latest':123}}
+        output = render(report)
+        self.assertIn('kari_weather_pilot_value_latest{metric="temperature"} -5',output)
+        self.assertIn('kari_weather_pilot_value_latest{metric="shortwave_radiation"} 0',output)
+        self.assertNotIn('private',output)

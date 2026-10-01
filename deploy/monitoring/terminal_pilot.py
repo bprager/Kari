@@ -11,7 +11,9 @@ METRICS = {'temperature':'Temperature', 'relative_humidity':'Humidity',
 SCALARS = {'phase','assessment','report_available','report_timestamp_seconds',
            'started_timestamp_seconds','ends_timestamp_seconds','backup_verified',
            'polls_successful','polls_attempted'}
-SERIES = {'samples','coverage_fraction','stale','suspect'}
+VALUE_FIELDS = {'value_'+key for key in ('latest','average_1h','average_24h','minimum_24h','maximum_24h')}
+SERIES = {'samples','coverage_fraction','stale','suspect','value_latest_valid_timestamp_seconds','value_count_24h'} | VALUE_FIELDS
+UNITS = {'temperature':'°C','relative_humidity':'%','dew_point':'°C','wind_speed':'m/s','shortwave_radiation':'W/m²'}
 ENDPOINT = 'http://192.168.1.3:19090/api/v1/query?'+urlencode(
     {'query':'{__name__=~"kari_weather_pilot_.+",job="odin-textfile"}'})
 
@@ -26,7 +28,7 @@ def parse(response):
         if not ((name in SCALARS and not metric) or (name in SERIES and metric in METRICS)):
             continue
         value = float(row['value'][1])
-        if not math.isfinite(value) or value < 0:
+        if not math.isfinite(value) or (value < 0 and not (name in VALUE_FIELDS and metric in ('temperature','dew_point'))):
             raise ValueError('Invalid monitoring number')
         result[name,metric] = value
     return result
@@ -90,6 +92,23 @@ def render(values, *, now=None, unreachable=False):
         success,attempts=get('polls_successful'),get('polls_attempted')
         counts = f'{success:g}/{attempts:g}' if success is not None and attempts is not None else 'unavailable'
         lines.append((f'   Backup: {backup} · Successful requests: {counts}', 'normal'))
+        lines.append(('   WEATHER VALUES · latest available modeled readings', 'accent'))
+        lines.append(('   METRIC (UNIT)          LATEST   AVG 1h  AVG 24h        RANGE 24h', 'muted'))
+        for metric,label in METRICS.items():
+            def value(key):
+                number = get('value_'+key,metric)
+                return '—' if number is None else f'{number:.1f}'
+            span = value('minimum_24h')+'–'+value('maximum_24h')
+            name = label+' ('+UNITS[metric]+')'
+            lines.append((f'   {name:<22}{value("latest"):>7}{value("average_1h"):>9}{value("average_24h"):>9}{span:>17}', 'normal'))
+            valid_at = get('value_latest_valid_timestamp_seconds',metric)
+            if valid_at is not None:
+                reading_age = max(0, int(now-valid_at)//60)
+                count = get('value_count_24h',metric,default=0)
+                old = ' · OLD READING' if reading_age > 60 else ''
+                lines.append((f'     Valid {reading_age}m ago · {count:g} samples in 24h window{old}', 'warning' if old else 'muted'))
+        lines.append(('   Sample averages; available history only, no gap filling.', 'muted'))
+        lines.append(('   Solar radiation is a provider interval average (W/m²).', 'muted'))
         lines.append(('   METRIC               SAMPLES    COVERAGE    STALE  SUSPECT', 'muted'))
         for metric,label in METRICS.items():
             def fmt(key,percent=False):
