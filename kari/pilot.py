@@ -212,12 +212,14 @@ class Pilot:
 
     def _summarize(self, store, start, end, cfg):
         c = store.connection
+        # The response that starts the pilot was requested before its start time.
+        # Include requests overlapping the window, including unfinished attempts.
         polls = dict(c.execute('''SELECT COALESCE(SUM(scheduled_count),0) scheduled,
             COALESCE(SUM(attempted),0) attempted, COALESCE(SUM(outcome='success'),0) successful,
             COALESCE(SUM(transport_success),0) transport_successful,
-            COALESCE(SUM(gaps),0) gaps FROM polls WHERE attempted_at>=? AND attempted_at<=?''', (start,end)).fetchone())
-        polls['outcomes'] = {r[0]:r[1] for r in c.execute('SELECT outcome,COUNT(*) FROM polls WHERE attempted_at>=? AND attempted_at<=? GROUP BY outcome',(start,end))}
-        polls['missing_metrics'] = sum(len(loads(r[0])) for r in c.execute('SELECT missing FROM polls WHERE attempted_at>=? AND attempted_at<=?',(start,end)))
+            COALESCE(SUM(gaps),0) gaps FROM polls WHERE COALESCE(received_at,attempted_at)>=? AND attempted_at<=?''', (start,end)).fetchone())
+        polls['outcomes'] = {r[0]:r[1] for r in c.execute('SELECT outcome,COUNT(*) FROM polls WHERE COALESCE(received_at,attempted_at)>=? AND attempted_at<=? GROUP BY outcome',(start,end))}
+        polls['missing_metrics'] = sum(len(loads(r[0])) for r in c.execute('SELECT missing FROM polls WHERE COALESCE(received_at,attempted_at)>=? AND attempted_at<=?',(start,end)))
         metrics = {m[1]:dict(samples=0,stale=0,suspect=0,revisions=0,coverage_fraction=0) for m in VARIABLES}
         total = 0
         export_path = self.reports / 'events.jsonl'

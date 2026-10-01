@@ -44,9 +44,9 @@ honestly. The trial never fabricates outages or missed history.
 - [x] Verify all existing tests plus pilot tests and compile/format checks.
 - [x] Deploy independently on Odin; verify file ownership, service and timers,
   and preserve preexisting service states.
-- [ ] Start actual data collection only with identified fixed HOME coordinates;
+- [x] Start actual data collection only with identified fixed HOME coordinates;
   inspect first real response semantics and all five metrics before trial starts.
-- [ ] Record observed deployment state and exact automatic schedule. Commit and
+- [x] Record observed deployment state and exact automatic schedule. Commit and
   push code, tests, design, preference mirror, and deployment evidence.
 
 Personal home automation is eligible for Open-Meteo's free noncommercial tier
@@ -64,7 +64,7 @@ reports. Raw bodies, coordinates, and request URLs stay out of reports and logs.
 - Reports are at `/var/lib/kari/weather-pilot/reports/latest.json` and
   `latest.md`; a completed trial writes `final.json` and `final.md`.
 - The controller checks configuration every 60 seconds while awaiting setup.
-- 61 tests passed on Odin (Python 3.14.4); the same suite and pilot regressions
+- 62 tests passed on Odin (Python 3.14.4); the same suite and pilot regressions
   run locally. Review reproduced and fixed incomplete-backup verification and
   stale-evidence coverage errors. Backup checks now compare a restored database
   with a saved source digest/count, and stale samples do not count toward
@@ -72,18 +72,25 @@ reports. Raw bodies, coordinates, and request URLs stay out of reports and logs.
 - Preexisting `kari-collector.service` and `kari-ble-recovery.timer` remain
   disabled on Odin. `kari-metrics-export.timer` remains enabled. No Bluetooth
   or OpenClaw services were started or reconfigured.
-- Location sharing was approved, but no usable fixed HOME coordinates were
-  found in existing configuration or the checked location registry. The latter
-  contained only a proposed synthetic HOME entry without coordinates.
-- **Actual state: awaiting_configuration; the seven-day collection window has
-  not started.** The sole missing operator input is the fixed HOME latitude and
-  longitude (or an existing protected file that contains them). A request for
-  that input is pending. No location was invented or sent to a provider.
+- The operator supplied a Google Maps HOME place link. The place pin (not the
+  map viewport center) was stored only in the protected coordinates file, owned
+  by `kari` with mode 0600. Weather collection is enabled; publishing is disabled.
+- **Actual state: running.** The first live response supplied all five valid,
+  current metrics with verified units, UTC timestamps, and a 900-second solar
+  averaging interval. The first report validates five exported weather events
+  and independently verifies the initial backup.
+- The seven-day window started **2026-10-01 04:16:10.703344 UTC** and ends
+  **2026-10-08 04:16:10.703344 UTC** (September 30 through October 7 at
+  21:16:10 Pacific daylight time). Collection runs every 15 minutes; the final
+  report is due at the first report timer tick after the deadline, October 8
+  04:30:30 UTC (October 7, 21:30:30 Pacific).
+- Live verification exposed an initial-request accounting error: its attempt
+  preceded the response that started the pilot. Reports now include requests
+  overlapping the collection window. A regression test reproduces the error;
+  all 62 tests pass locally and on Odin after the fix. The live report correctly
+  counts the first successful request. This change preserves the original deadline.
 
-Once the missing coordinates are supplied, store them only in
-`/etc/kari-weather-pilot/coordinates.local.json` owned by `kari`, mode 0600,
-with the matching approval fields and epoch. Set weather enabled in
-`/etc/kari-weather-pilot/config.yaml`. The installed controller automatically
-validates the configuration and first complete current response, freezes its
-seven-day deadline, and runs without further human interaction. Receiver
-publishing remains unavailable.
+Collection, periodic reports, daily verified backups, shutdown at the deadline,
+and the final assessment are automatic. The seven-day outcome remains
+`in_progress` until the full window has elapsed. Coordinates and the HOME address
+are excluded from this document and the repository.

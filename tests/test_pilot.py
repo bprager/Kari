@@ -77,6 +77,17 @@ class PilotTests(unittest.TestCase):
         self.assertEqual(final['acceptance'],'needs_review')
         self.assertTrue((self.folder/'reports/final.json').exists())
 
+    def test_report_counts_request_that_started_before_first_response(self):
+        database = self.populate()
+        with Store(database) as store:
+            store.connection.execute('UPDATE polls SET attempted_at=attempted_at-2')
+            store.connection.commit()
+        self.pilot.begin(NOW)
+        report = self.pilot.report('2026-09-30T21:15:05Z')
+        self.assertEqual(report['polls']['attempted'], 1)
+        self.assertEqual(report['polls']['successful'], 1)
+        self.assertEqual(report['polls']['outcomes'], {'success': 1})
+
     def test_report_without_start_is_explicitly_waiting(self):
         self.pilot.step(0,NOW)
         report = self.pilot.report(NOW)
