@@ -3,6 +3,10 @@ from datetime import datetime
 import json
 import math
 import time
+import re
+import subprocess
+import threading
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -42,30 +46,102 @@ def fetch():
     return parse(json.loads(body))
 
 
+def parse_text(body):
+    rows = []
+    for line in body.splitlines():
+        if not line.startswith('kari_weather_pilot_'):
+            continue
+        match = re.fullmatch(r'(kari_weather_pilot_[a-z0-9_]+)(?:\{metric="([a-z0-9_]+)"\})?\s+(\S+)', line)
+        if not match:
+            raise ValueError('Invalid weather export')
+        name, metric, value = match.groups()
+        labels = {'__name__':name}
+        if metric: labels['metric'] = metric
+        rows.append({'metric':labels, 'value':[0,value]})
+    return parse({'status':'success','data':{'result':rows}})
+
+
+def fetch_direct():
+    # Read only the existing coordinate-free export with existing SSH credentials.
+    result = subprocess.run(['ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
+        '-o','ConnectTimeout=2','-o','ConnectionAttempts=1','odin',
+        'head -c 65537 /home/bernd/Projects/prager.ws/infra/odin/observability/textfile/kari-weather-pilot.prom'],
+        capture_output=True, timeout=4, check=True)
+    if len(result.stdout) > 65536:
+        raise ValueError('Weather export too large')
+    return parse_text(result.stdout.decode('utf-8'))
+
+
+ERRORS = (OSError, ValueError, KeyError, TypeError, AttributeError, IndexError, subprocess.SubprocessError)
+
+
+def check_values(values):
+    if ('report_available','') not in values:
+        raise ValueError('Weather metrics missing')
+    if values[('report_available','')] == 1 and not all((key,'') in values for key in ('phase','report_timestamp_seconds')):
+        raise ValueError('Weather report incomplete')
+    return values
+
+
+def error_kind(error):
+    if isinstance(error, HTTPError): return f'HTTP {error.code}'
+    if isinstance(error, (ValueError, KeyError, TypeError, AttributeError, IndexError)): return 'invalid or missing data'
+    if isinstance(error, (TimeoutError, subprocess.TimeoutExpired)): return 'request timed out'
+    return 'connection failed'
+
+
 class Reader:
     def __init__(self):
         self.next_read = float('-inf')
         self.values = {}
         self.unreachable = False
+        self.source = 'loading'
+        self.detail = ''
+        self.loading = False
 
-    def read(self):
-        now = time.monotonic()
-        if now >= self.next_read:
-            self.next_read = now+60
+    def _refresh(self):
+        try:
             try:
-                self.values = fetch()
-                self.unreachable = False
-            except (OSError, ValueError, KeyError, TypeError, AttributeError):
-                self.unreachable = True
+                values = check_values(fetch())
+                # Bypass stale scrapes when the direct export is newer.
+                age = time.time()-values.get(('report_timestamp_seconds',''),0)
+                if values.get(('report_available','')) != 1 or (age > 1200 and values.get(('phase','')) != 2):
+                    raise ValueError('Weather report stale or unavailable')
+                source, detail = 'Prometheus', ''
+            except ERRORS as primary:
+                values = check_values(fetch_direct())
+                source, detail = 'direct export', 'Monitoring endpoint: '+error_kind(primary)
+            self.values, self.source, self.detail = values, source, detail
+            self.unreachable = False
+        except ERRORS as error:
+            self.unreachable = True
+            self.detail = 'Weather data refresh failed: '+error_kind(error)
+        finally:
+            self.loading = False
+
+    def read(self, *, background=False):
+        now = time.monotonic()
+        if now >= self.next_read and not self.loading:
+            self.next_read = now+ (15 if self.unreachable else 60)
+            self.loading = True
+            if background:
+                threading.Thread(target=self._refresh,daemon=True).start()
+            else:
+                self._refresh()
+            if self.unreachable: self.next_read = now+15
         return self.values, self.unreachable
 
 
-def render(values, *, now=None, unreachable=False):
+def render(values, *, now=None, unreachable=False, source=None, detail=""):
     now = time.time() if now is None else now
     def get(name,metric='',default=None): return values.get((name,metric),default)
     lines = [('', 'normal'), (' WEATHER PILOT · fixed HOME · Odin', 'accent')]
     if unreachable:
-        lines.append(('   ODIN UNREACHABLE — cached information below, if available.', 'warning'))
+        lines.append(('   WEATHER DATA REFRESH FAILED — cached information below, if available.', 'warning'))
+    if source:
+        lines.append((f'   Data source: {source}', 'muted'))
+    if detail:
+        lines.append(('   '+detail, 'warning'))
     if get('report_available') != 1 or get('phase') is None:
         lines[1] = (' WEATHER PILOT · Odin · UNAVAILABLE', 'warning')
         lines.append(('   Pilot report is unavailable; local sensor monitoring continues.', 'warning'))
@@ -75,7 +151,7 @@ def render(values, *, now=None, unreachable=False):
         age = now-get('report_timestamp_seconds',default=0)
         stale = age > 1200 and get('phase') != 2
         future = age < -60
-        status = 'STALE REPORT' if stale else 'REPORT CLOCK INVALID' if future else 'final report' if get('phase') == 2 else 'report current'
+        status = 'STALE REPORT' if stale else 'REPORT CLOCK INVALID' if future else 'final report' if get('phase') == 2 else 'cached report' if unreachable else 'report current'
         lines.append((f'   {phase} · {assessment} · {status} · age {max(0,age)//60:.0f}m',
                       'warning' if stale or future or unreachable else 'accent'))
         for label, key in [('Started','started_timestamp_seconds'),('Automatic stop','ends_timestamp_seconds')]:

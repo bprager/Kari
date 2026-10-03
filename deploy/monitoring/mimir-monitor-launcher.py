@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Extend the installed sensor monitor without changing its collector package."""
+import sys
 import kari.monitor as monitor
 from kari.cli import main
 from terminal_pilot import Reader, render
@@ -10,9 +11,9 @@ original = monitor.render_dashboard
 
 def render_combined(snapshot, *, width=120, trend_hours=6):
     lines = original(snapshot, width=width, trend_hours=trend_hours)
-    values, unreachable = reader.read()
+    values, unreachable = reader.read(background='--once' not in sys.argv)
     lines.extend(monitor.RenderLine(text[:max(40,width)], style)
-                 for text, style in render(values, unreachable=unreachable))
+                 for text, style in render(values, unreachable=unreachable, source=reader.source, detail=reader.detail))
     return lines
 
 
